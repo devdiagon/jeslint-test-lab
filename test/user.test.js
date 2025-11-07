@@ -36,7 +36,7 @@ describe('Users API', () => {
   // Prueba que el endpoint rechace las peticiones incompletas
   test('POST /api/users should fail if data is incomplete', async () => {
     // Mandar un payload incompleto
-    const res = await request(app).post('/api/users').send({ name: 'Frederick'});
+    const res = await request(app).post('/api/users').send({ name: 'Frederick' });
 
     // Esperamos falla (400)
     expect(res.statusCode).toBe(400);
@@ -48,9 +48,56 @@ describe('Users API', () => {
   // Prueba que un endpoint inválido sea rechazado
   test('GET /invalid should return an ', async () => {
     const res = await request(app).get('/invalid');
-    
+
     expect(res.statusCode).toBe(404);
     expect(res.body).toHaveProperty('message', 'Route not found');
+  });
+
+  // Cargar en memoria una lista de usuarios (TODOS válidos) y listarlos
+  test('POST several users and verify GET returns all of them at /api/users route', async () => {
+
+    // Lista de usuarios de prueba, todos con los campos "name" e "email"
+    const sampleUsers = [
+      { name: 'Alice', email: 'alice@mail.com' },
+      { name: 'Bob', email: 'bob@mail.com' },
+      { name: 'Charlie', email: 'charlie@mail.com' },
+      { name: 'Claud', email: 'claud@mail.com' },
+      { name: 'Jessica', email: 'jessy@mail.com' },
+    ];
+
+    // Añadir usuarios mediante la ruta POST uno por uno 
+    for (const user of sampleUsers) {
+      const res = await request(app).post('/api/users').send(user);
+      expect(res.statusCode).toBe(201);
+      expect(res.body).toHaveProperty('id');
+      expect(res.body).toHaveProperty('name');
+      expect(res.body).toHaveProperty('email');
+      expect(res.body.name).toBe(user.name);
+      expect(res.body.email).toBe(user.email);
+    }
+
+    // Obtener todos los usuarios, incluido los nuevos
+    const getRes = await request(app).get('/api/users');
+
+    // 1) Verificar el código de status
+    expect(getRes.statusCode).toBe(200);
+    
+    // 2) Verificar que la cantidad agregada sea al menos igual a la que se agregó
+    expect(getRes.body.length).toBeGreaterThanOrEqual(sampleUsers.length);
+
+    // 3) Verificar que cada elemento tiene id, name, email
+    for (const user of getRes.body) {
+      expect(user).toHaveProperty('id');
+      expect(user).toHaveProperty('name');
+      expect(user).toHaveProperty('email');
+    }
+
+    // 4) Verificar que cada elemento haya sido agregado correctamente
+    for (const expected of sampleUsers) {
+      const match = getRes.body.find(u => u.name === expected.name && u.email === expected.email);
+      expect(match).toBeDefined();
+    }
+
   });
 
 });
